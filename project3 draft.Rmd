@@ -1,0 +1,48 @@
+---
+title: "PROJECT3"
+author: "Team Sloth"
+date: "3/21/2022"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+## read the data
+
+```{r cars}
+library(tidyverse)
+indeed_url<- "https://raw.githubusercontent.com/Benson90/Project3/main/indeed_job_dataset.csv"
+indeeddata <-read.csv(indeed_url)
+
+college_url<- "https://raw.githubusercontent.com/jayleecunysps/607data/main/tabn322.csv"
+collegedata <-read.csv(college_url, skip = 1)
+
+
+collegedata<-collegedata %>% 
+slice(-1,-36,-37,-38,-39,-40)
+
+collegedata <-collegedata[,1:19]
+```
+
+## Including Plots
+
+You can also embed plots, for example:
+
+```{r clean, echo=FALSE}
+
+
+jobtable <- indeeddata %>%
+select("X","Job_Title","Queried_Salary","Job_Type")
+
+skilltable <- indeeddata %>%
+select("X","python","sql","machine.learning","r","hadoop","tableau","sas","spark","java","Others")
+
+companytable <- indeeddata %>%
+select("X","Company","Location","Company_Revenue","Company_Employees","Consulting.and.Business.Services","Internet.and.Software","Banks.and.Financial.Services","Health.Care","Insurance","Other_industries")
+
+
+```
+
+Note that the `echo = FALSE` parameter was added to the code chunk to prevent printing of the R code that generated the plot.
