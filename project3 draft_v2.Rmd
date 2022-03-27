@@ -100,12 +100,6 @@ pl2<-ggplot(data=collegedataplot2) +
 
 pl2
 
-cswf <- collegedataplot2 %>%
-  select(c('year','ComputerandInfoSciences'))
-
-collegedatapwfplot2 <- waterfall(cswf,linetype = 1,rect_border = NA)
-  
-collegedatapwfplot2
 
 
 pl3<-ggplot(data=collegedataplot2) +
@@ -114,12 +108,13 @@ pl3<-ggplot(data=collegedataplot2) +
 
 pl3
 
-mswf <- collegedataplot2 %>%
-  select(c('year','Mathandstatistics'))
 
-collegedatapwfplot3 <- waterfall(mswf,linetype = 1,rect_border = NA)
-  
-collegedatapwfplot3
+ComputerandInfoSciencesrate <- collegedataplot2$ComputerandInfoSciences/collegedataplot2$Total*100
+Mathandstatisticsrate <- collegedataplot2$Mathandstatistics/collegedataplot2$Total*100
+Businessrate <- collegedataplot2$Business/collegedataplot2$Total*100
+
+rateofchange <- cbind(ComputerandInfoSciencesrate, Mathandstatisticsrate,Businessrate)
+
 
 ```
 
