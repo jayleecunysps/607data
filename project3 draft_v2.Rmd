@@ -1,0 +1,125 @@
+---
+title: "PROJECT3"
+author: "Team Sloth"
+date: "3/21/2022"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+## read the data
+
+```{r cars}
+
+library(waterfalls)
+library(tidyverse)
+library(ggplot2)
+library(dplyr)
+library(stringr) 
+library(rvest)
+library(lubridate)
+indeed_url<- "https://raw.githubusercontent.com/Benson90/Project3/main/indeed_job_dataset.csv"
+indeeddata <-read.csv(indeed_url)
+
+college_url<- "https://raw.githubusercontent.com/jayleecunysps/607data/main/tabn322.csv"
+collegedata <-read.csv(college_url, skip = 1)
+
+
+collegedata<-collegedata %>% 
+slice(-1,-36,-37,-38,-39,-40)
+
+collegedata <-collegedata[,1:19]
+```
+
+## Including Plots
+
+You can also embed plots, for example:
+
+```{r clean, echo=FALSE}
+
+
+jobtable <- indeeddata %>%
+select("X","Job_Title","Queried_Salary","Job_Type")
+
+skilltable <- indeeddata %>%
+select("X","python","sql","machine.learning","r","hadoop","tableau","sas","spark","java","Others")
+
+companytable <- indeeddata %>%
+select("X","Company","Location","Company_Revenue","Company_Employees","Consulting.and.Business.Services","Internet.and.Software","Banks.and.Financial.Services","Health.Care","Insurance","Other_industries")
+
+
+```
+
+
+
+
+```{r echo=FALSE}
+collegedata$Field.of.study <- as.character(str_replace_all(collegedata$Field.of.study,"[1-9]","")) 
+collegedata$Field.of.study <- as.character(str_replace_all(collegedata$Field.of.study,"[/]","")) 
+collegedata$Field.of.study <- gsub("   ","",as.character(collegedata$Field.of.study))
+
+collegedataplot <- as.data.frame(t(collegedata))
+names(collegedataplot) <- collegedataplot[1,]
+collegedataplot = collegedataplot[-1,]
+
+collegedataplot2 <- collegedataplot %>%
+  select(c('Total','Business\\\\', 'Computer and information sciences and support \nservices','Mathematics and statistics '))
+
+collegedataplot2<-collegedataplot2 %>% 
+slice(-1,-2,-3,-4,-5,-6,-7,-8)
+
+year <- c(2011:2020)
+
+collegedataplot2 <- cbind(collegedataplot2, year)
+
+colnames(collegedataplot2) <- c('Total','Business','ComputerandInfoSciences','Mathandstatistics','year')
+
+collegedataplot2$Total <- gsub(",", "", collegedataplot2$Total) 
+collegedataplot2$Business <- gsub(",", "", collegedataplot2$Business) 
+collegedataplot2$Mathandstatistics <- gsub(",", "", collegedataplot2$Mathandstatistics) 
+collegedataplot2$ComputerandInfoSciences <- gsub(",", "", collegedataplot2$ComputerandInfoSciences) 
+
+collegedataplot2$Total <-as.numeric(collegedataplot2$Total)
+collegedataplot2$Business <-as.numeric(collegedataplot2$Business)
+collegedataplot2$ComputerandInfoSciences <-as.numeric(collegedataplot2$ComputerandInfoSciences)
+collegedataplot2$Mathandstatistics <-as.numeric(collegedataplot2$Mathandstatistics)
+collegedataplot2$year <-as.factor(collegedataplot2$year)
+
+
+pl1<-ggplot(data=collegedataplot2) +
+  geom_point(aes(x=year,y=Business)) +
+  ggtitle("Enrollment of Business")
+
+pl1
+
+pl2<-ggplot(data=collegedataplot2) +
+  geom_point(aes(x=year,y=ComputerandInfoSciences)) +
+  ggtitle("Enrollment of Computer and Info Sciences")
+
+pl2
+
+cswf <- collegedataplot2 %>%
+  select(c('year','ComputerandInfoSciences'))
+
+collegedatapwfplot2 <- waterfall(cswf,linetype = 1,rect_border = NA)
+  
+collegedatapwfplot2
+
+
+pl3<-ggplot(data=collegedataplot2) +
+  geom_point(aes(x=year,y=Mathandstatistics)) +
+  ggtitle("Enrollment of Math and statistics")
+
+pl3
+
+mswf <- collegedataplot2 %>%
+  select(c('year','Mathandstatistics'))
+
+collegedatapwfplot3 <- waterfall(mswf,linetype = 1,rect_border = NA)
+  
+collegedatapwfplot3
+
+```
+
