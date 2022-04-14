@@ -1,0 +1,58 @@
+---
+title: "Week 11 Recommender System"
+author: "Jay Lee"
+date: "4/13/2022"
+output: 
+  html_document:
+     theme: yeti
+     toc: true
+     toc_float: true
+---
+
+### Introduction and overview
+
+I do not think recommender systems is strange to anyone. In fact, almost every website I went to has recommender systems. It is part of our life now, sometimes I ignore it unintentionally.Recommender systems are helpful for both buyer and seller if it works functionally. ECommerce market is growing faster than ever due to COVID-19.
+
+Let's use Urban Outfitters as example, I used to shop at Urban Outfitters often. Urban Outfitters is a multinational lifestyle retailer.
+
+
+### Cookies
+
+![UO cookies](https://github.com/jayleecunysps/AssignmentforSPS/blob/main/Screen%20Shot%202022-04-13%20at%206.44.20%20PM.png?raw=true)
+
+First thing you go to Urban Outfitters site, it will ask you to accept all cookies. Why? Data provided by cookies provided useful valuable data about customers’ online behavior. This is why you think that they understand you pretty well. To learn more about cookies, I paste the link down below.
+
+https://recostream.com/blog/the-role-of-cookies-for-the-purchasing-customer.
+
+### Scenario Analysis
+
+**1) who are your target users?**
+
+Urban Outfitters targets young adults who are culturally sophisticated, self-expressive and concerned with acceptance by their peer group.
+
+**2) what are their key goals?**
+
+Urban Outfitters uses recommender systems to maximize the sales and provide a better shopping experience.
+
+**3) how can you help them accomplish those goal?**
+
+Urban Outfitters put **You May Also Like** on the left side of the item that buyer want to purchase.
+
+![UO jacket](https://github.com/jayleecunysps/AssignmentforSPS/blob/main/Screen%20Shot%202022-04-13%20at%206.45.06%20PM.png?raw=true)
+
+### reverse engineer
+
+As you can see the system relys on same type of clothing. Let's use the picture shows above as example, it recommend more winter clothing for the same weather. Or you can also see the picture below, it recommend same type of hat.
+
+![UO hat](https://github.com/jayleecunysps/AssignmentforSPS/blob/main/Screen%20Shot%202022-04-13%20at%209.54.26%20PM.png?raw=true)
+
+### Recommendations and Conclusion
+
+It would be better if the recommended item has price info, it even better it is on sale item. It increase the change of buyer clicking on it.
+
+To maximize the sales, I think it would be a good idea to include 1 or 2 item is slight;y different from the iteam that buyer is looking at. For example, UO can recommed 1 Baseball Henley Shirt to match the hat instead of 4 other Baseball hat.
+
+In conclusion, I think the current system is good, however, it would miss the chance to maximize the sales by giving buyer too similar items.
+
+### References
+[link to sec.gov](https://www.sec.gov/Archives/edgar/data/912615/000119312508068073/d10k.htm#:~:text=Urban%20Outfitters%20targets%20young%20adults,acceptance%20by%20their%20peer%20group.)
