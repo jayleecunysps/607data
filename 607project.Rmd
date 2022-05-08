@@ -1,0 +1,134 @@
+---
+title: "606 Project"
+author: "Jay Lee"
+date: "5/3/2022"
+output:
+  pdf_document: default
+  html_document: default
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+```{r include=FALSE}
+# load libary
+library(readr)
+library(dplyr)
+library(stringr)
+library(extraoperators)
+library(psych)
+library(ggplot2)
+
+```
+
+
+### Part 1 - Introduction
+
+In recent years, we have heard hate crimes more often from the media. Hate Crimes are offenses that are motivated by a particular race, religion, ethnicity, gender, age, disability, ancestry, national origin or sexual orientation. Rising hate crimes may be due to “the new normal” that was caused by the pandemic. Pandemic also cause a lot of people to lose their jobs. Furthermore, does unemployment drive hate crimes as well? Is there a relationship between the unemployment rate and hate crimes?
+
+### Part 2 - Data
+
+The data are from FBI and Southern Poverty Law Center. The FBI Uniform Crime Reporting Program collects hate crime data from law enforcement agencies. The UCR Program collects data on only prosecutable hate crimes, which make up a fraction of hate incidents (which includes non-prosecutable offenses, such as circulation of white nationalist recruitment materials on college campuses). The Southern Poverty Law Center uses media accounts and people’s self-reports to assess the situation.
+
+The Southern Poverty Law Center uses media accounts and people’s self-reports to assess the situation.
+
+I want to define what is high unemployed rate, so I use median as a dividing line.
+
+If the share_unemployed_seasonal is higher than median, then the reply under high_unemployed is true, else is false.
+
+Here is the summary of the data:
+
+```{r include=FALSE}
+# load data
+
+hate_url<- "https://raw.githubusercontent.com/fivethirtyeight/data/master/hate-crimes/hate_crimes.csv"
+hate_url <-read.csv(hate_url)
+
+summary(hate_url) 
+
+# step1 pull the useful column
+hate_url <- hate_url %>%
+select("state","median_household_income","share_population_with_high_school_degree","share_unemployed_seasonal","hate_crimes_per_100k_splc","avg_hatecrimes_per_100k_fbi")
+
+# step2 exclude the NA
+hate_url <- hate_url[complete.cases(hate_url),]
+
+# step3 added a new column to combine both case from FBI and Southern Poverty Law Center number
+hate_url$hate_crimes_combine <- hate_url$hate_crimes_per_100k_splc+hate_url$avg_hatecrimes_per_100k_fbi 
+
+# step4 get the Median which is 0.05200
+summary(hate_url) 
+
+# step5 define high and low unemployed rate by Median
+hate_url$high_unemployed <-hate_url$share_unemployed_seasonal %g% 0.05200 
+
+# step6 share_unemployed_seasonal*100k to get unemployed count per 100k people
+hate_url$share_unemployed_seasonal_100k <- hate_url$share_unemployed_seasonal*100000
+
+```
+
+
+```{r echo=FALSE}
+summary(hate_url) 
+
+ggplot(hate_url, aes(x = high_unemployed)) +
+  geom_bar(fill="blue") +
+  labs(
+    x = "", y = "",
+    title = "does the state have higher than avg unemployed rate?"
+  ) +
+  coord_flip() + geom_text(aes(label = ..count..), stat = "count", vjust = 8.2, colour = "black")
+
+
+
+boxplot(hate_url$hate_crimes_combine ~ hate_url$high_unemployed, main = "Boxplot with hate crimes case of high unemployed rate", ylab = "hate crimes case", xlab = "high unemployed rate",col="blue")
+
+
+
+```
+
+
+```{r echo=FALSE}
+Q1 <- quantile(hate_url$hate_crimes_combine, .25)
+Q3 <- quantile(hate_url$hate_crimes_combine, .75)
+IQR <- IQR(hate_url$hate_crimes_combine)
+
+
+new_hate_url <- subset(hate_url, hate_url$hate_crimes_combine> (Q1 - 1.5*IQR) & hate_url$hate_crimes_combine< (Q3 + 1.5*IQR))
+
+
+summary(new_hate_url) 
+
+```
+
+After removing the outliner, let's compare the result of both group of higher than avg unemployed rate and lower than avg unemployed rate. There is more states has lower unemployed rate.
+
+However, the states has lower unemployed rate tend to have a higher hate crime cases
+
+```{r}
+ggplot(new_hate_url, aes(x = high_unemployed)) +
+  geom_bar(fill="blue") +
+  labs(
+    x = "", y = "",
+    title = "does the state have higher than avg unemployed rate?"
+  ) +
+  coord_flip() + geom_text(aes(label = ..count..), stat = "count", vjust = 8.2, colour = "black")
+
+
+
+boxplot(new_hate_url$hate_crimes_combine ~ new_hate_url$high_unemployed, main = "Boxplot with hate crimes case of high unemployed rate", ylab = "hate crimes case", xlab = "high unemployed rate",col="blue")
+
+
+```
+
+
+
+```{r echo=FALSE}
+
+ggplot(data = new_hate_url, aes(x = share_unemployed_seasonal_100k, y = hate_crimes_combine)) +
+  geom_point(colour = "blue", size = 1) +
+  stat_smooth(method = "lm", se = FALSE, color= "red")
+
+
+```
