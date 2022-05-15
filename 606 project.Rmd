@@ -1,0 +1,205 @@
+---
+title: "606 Project"
+author: "Jay Lee"
+date: "5/3/2022"
+output:
+  pdf_document: default
+  html_document: default
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+```{r include=FALSE}
+# load libary
+library(readr)
+library(dplyr)
+library(stringr)
+library(extraoperators)
+library(psych)
+library(ggplot2)
+
+```
+
+
+### Part 1 - Introduction
+
+In recent years, we have heard hate crimes more often from the media. Hate Crimes are offenses that are motivated by a particular race, religion, ethnicity, gender, age, disability, ancestry, national origin or sexual orientation. Rising hate crimes may be due to “the new normal” that was caused by the pandemic. Pandemic also cause a lot of people to lose their jobs. Furthermore, does unemployment drive hate crimes as well? Is there a relationship between the unemployment rate and hate crimes?
+
+### Part 2 - Data
+
+The data are from FBI and Southern Poverty Law Center. The FBI Uniform Crime Reporting Program collects hate crime data from law enforcement agencies. The UCR Program collects data on only prosecutable hate crimes, which make up a fraction of hate incidents (which includes non-prosecutable offenses, such as circulation of white nationalist recruitment materials on college campuses). The Southern Poverty Law Center uses media accounts and people’s self-reports to assess the situation.
+
+The Southern Poverty Law Center uses media accounts and people’s self-reports to assess the situation.
+
+I want to define what is high unemployed rate, so I use median as a dividing line.
+
+If the share_unemployed_seasonal is higher than median, then the reply under high_unemployed is true, else is false.
+
+Here is the summary of the data:
+
+```{r include=FALSE}
+# load data
+
+hate_url<- "https://raw.githubusercontent.com/fivethirtyeight/data/master/hate-crimes/hate_crimes.csv"
+hate_url <-read.csv(hate_url)
+
+# step1 pull the useful column
+hate_url <- hate_url %>%
+select("state","median_household_income","share_unemployed_seasonal","hate_crimes_per_100k_splc","avg_hatecrimes_per_100k_fbi")
+
+# step2 exclude the NA
+hate_url <- hate_url[complete.cases(hate_url),]
+
+# step3 added a new column to combine both case from FBI and Southern Poverty Law Center number
+hate_url$hate_crimes_combine <- hate_url$hate_crimes_per_100k_splc+hate_url$avg_hatecrimes_per_100k_fbi 
+
+# step4 get the Median which is 0.05200
+summary(hate_url) 
+
+# step5 define high and low unemployed rate by Median
+hate_url$high_unemployed <-hate_url$share_unemployed_seasonal %g% 0.05200 
+
+# step6 share_unemployed_seasonal*100k to get unemployed count per 100k people
+hate_url$share_unemployed_seasonal_100k <- hate_url$share_unemployed_seasonal*100000
+
+```
+```{r echo=FALSE}
+summary(hate_url) 
+
+```
+
+### Part 3 - Exploratory data analysis
+
+First of all, lets check the data distribution and summary of unemployed rate. The unemployment data appear a little left skewed for me.
+
+```{r echo=FALSE}
+
+ggplot(hate_url, aes(share_unemployed_seasonal_100k)) +        
+  geom_histogram(aes(y = ..density..),bins=20) +
+  stat_function(fun = dnorm,
+                args = list(mean = mean(hate_url$share_unemployed_seasonal_100k),
+                            sd = sd(hate_url$share_unemployed_seasonal_100k)),
+                col = "#1b98e0",
+                size = 1)
+
+
+summary(hate_url$share_unemployed_seasonal_100k)
+```
+Now lets check the data distribution and summary of hate crimes case. Hate crimes data is different from previous result, the data appear right skewed for me, and clearly we can see one outliers from the Now lets check the data distribution and summary of crimes case. It is different from previous result, the data appear right skewed for me, and clearly we can see one outliers from the plot.
+
+
+```{r echo=FALSE}
+
+ggplot(hate_url, aes(hate_crimes_combine)) +        
+  geom_histogram(aes(y = ..density..),bins=20) +
+  stat_function(fun = dnorm,
+                args = list(mean = mean(hate_url$hate_crimes_combine),
+                            sd = sd(hate_url$hate_crimes_combine)),
+                col = "#1b98e0",
+                size = 1) 
+
+
+summary(hate_url$hate_crimes_combine)
+
+```
+
+Because we see the outliers, we would like to clear it. 
+
+Now we can see the mean drop from 2.6460 to 2.4323, and max drop from 12.4758 to 5.4327 .
+
+
+```{r echo=FALSE}
+Q1 <- quantile(hate_url$hate_crimes_combine, .25)
+Q3 <- quantile(hate_url$hate_crimes_combine, .75)
+IQR <- IQR(hate_url$hate_crimes_combine)
+
+
+new_hate_url <- subset(hate_url, hate_url$hate_crimes_combine> (Q1 - 1.5*IQR) & hate_url$hate_crimes_combine< (Q3 + 1.5*IQR))
+
+ggplot(new_hate_url, aes(hate_crimes_combine)) +        
+  geom_histogram(aes(y = ..density..),bins=20) +
+  stat_function(fun = dnorm,
+                args = list(mean = mean(new_hate_url$hate_crimes_combine),
+                            sd = sd(new_hate_url$hate_crimes_combine)),
+                col = "#1b98e0",
+                size = 1) 
+
+
+summary(new_hate_url$hate_crimes_combine)
+
+```
+
+After removing the outliner, let's compare the result of both group of higher than avg unemployed rate and lower than avg unemployed rate. There is more states has lower unemployed rate.
+
+However, the states has lower unemployed rate tend to have a higher hate crime cases
+
+```{r}
+ggplot(new_hate_url, aes(x = high_unemployed)) +
+  geom_bar(fill="blue") +
+  labs(
+    x = "", y = "",
+    title = "does the state have higher than avg unemployed rate?"
+  ) +
+  coord_flip() 
+
+
+
+boxplot(new_hate_url$hate_crimes_combine ~ new_hate_url$high_unemployed, main = "Boxplot with hate crimes case of high unemployed rate", ylab = "hate crimes case", xlab = "high unemployed rate",col="blue")
+
+
+```
+
+### Part 4 - Inference
+
+```{r}
+hate_model <- lm(new_hate_url$hate_crimes_combine ~ new_hate_url$share_unemployed_seasonal_100k )
+summary(hate_model)
+
+```
+
+\[
+  \hat{y} = 2.8991798 - 0.0000924 \times share\_unemployed\_seasonal\_100k
+\]
+
+
+the p-value is 0.6229 which mean it is not statistically significant. since the sample size is small and not huge, it should not affect the raito of N, so the high p-value is pretty accurate and meaningful.
+
+
+also, one more thing bring my attention which is R-squared is 0.005542 which mean effect size is small, it also show in the plot which is far away from the regression line.
+
+```{r echo=FALSE}
+
+ggplot(data = new_hate_url, aes(x = share_unemployed_seasonal_100k, y = hate_crimes_combine)) +
+  geom_point(colour = "blue", size = 1) +
+  stat_smooth(method = "lm", se = FALSE, color= "red")
+
+
+ggplot(data = hate_model, aes(x = .fitted, y = .resid)) +
+  geom_point(colour = "blue", size = 1) +
+  geom_hline(yintercept = 0, linetype = "dashed", color= "red") +
+  xlab("Fitted values") +
+  ylab("Residuals")
+
+```
+
+
+Also, the distribution is heavy tailed since there is few extreme prositve and negative residuals.
+
+
+```{r}
+
+ggplot(data = hate_model, aes(sample = .resid)) +
+  stat_qq(colour = "blue", size = 1) + stat_qq_line(colour = "red", size = 1)
+
+```
+
+### Part 5 - Conclusion
+
+Unlike author found that higher rates of hate crimes are tied to income inequality, I do not think the data show that is a strong relationship between unemployment rate and hate crimes case from all the plot and summary. There is too much variability in the model and High p value shows that the model is not statistically significant. 
+
+I believe if the data break it down into zip code it may have a more accurate conclusion by comparing by zip code group within one state since they share more similar cultural values. This also help to lower other potential biases. It is more fair to pick a state for study instead of the whole US if we want to focus on the true relation hate crimes and unemployment.
+
+
+https://fivethirtyeight.com/features/higher-rates-of-hate-crimes-are-tied-to-income-inequality/
