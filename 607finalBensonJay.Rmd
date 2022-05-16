@@ -1,0 +1,353 @@
+---
+title: "607 final project"
+author: "Jay Lee and Benson Toi"
+date: "5/15/2022"
+output:
+  html_document: default
+  pdf_document: default
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+library(dplyr)
+library(infer)
+library(ggplot2)
+library(readr)
+library(usmap)
+library(stringr)
+library(extraoperators)
+library(psych)
+library(jsonlite)
+library(tidyverse)
+```
+
+### Introduction
+
+In recent years, we have heard hate crimes more often from the media like New York Times. Hate Crimes are offenses that are motivated by a particular race, religion, ethnicity, gender, age, disability, ancestry, national origin or sexual orientation. Rising hate crimes may be due to “the new normal” that was caused by the pandemic.
+
+From the acticle "Higher Rates Of Hate Crimes Are Tied To Income Inequality" by Maimuna Majumder. Maimuna point out that income inequality likely serves as a catalyzing condition for hate incidents.
+
+From the earlier study, Jay wanted to see if there is relationship between the unemployment rate and hate crimes. We (Benson and Jay) both found that we develop a stronger interest in this topic after couple discussion. We really want to go deeper with this topic.
+
+Furthermore, we want to know if household income and education level drive hate crimes as well besides income inequality and unemployment rate. 
+
+We create 2 new models which is household income and education level model and compare with unployment model to see there is any new finding or relatetionship. Also we want to see if New York Times API can support our statement of hearing hate more often.
+
+
+### New York Times API 
+
+As we said, we have hread more and more hate crimes in recent years.
+From the NYT archive API, we found hate crime related articles increase 300% from 2019 to 2020 under New York Times Archive API.
+
+## load libary and apikey in backend
+```{r libary, include=FALSE}
+apikey <- "61r4qgmnWWFK8x2cXRj3IDGOXAmPwQzn"
+```
+## look at the data and pull the useful info
+
+
+```{r url, echo=TRUE}
+nyturl19 <- paste("https://api.nytimes.com/svc/archive/v1/2019/1.json?api-key=", apikey, sep='')
+hateData19 <- fromJSON(nyturl19) #Look at what is useful
+hateData19 <- hateData19 %>% 
+as.data.frame() %>%
+select(-response.docs.multimedia) %>%
+filter(str_detect(response.docs.lead_paragraph, "hate crime"))
+nyturl20 <- paste("https://api.nytimes.com/svc/archive/v1/2020/1.json?api-key=", apikey, sep='')
+hateData20 <- fromJSON(nyturl20) #Look at what is useful
+hateData20 <- hateData20 %>% 
+as.data.frame() %>%
+select(-response.docs.multimedia) %>%
+filter(str_detect(response.docs.lead_paragraph, "hate crime"))
+hateData19 <- hateData19 %>% 
+select(response.docs.pub_date,response.docs.lead_paragraph)
+hateData20 <- hateData20 %>% 
+select(response.docs.pub_date,response.docs.lead_paragraph)
+print(hateData19)
+print(hateData20)
+```
+### Data
+
+The data are from FBI, Education Attainment in the U.S. and Southern Poverty Law Center. The FBI Uniform Crime Reporting Program collects hate crime data from law enforcement agencies. The UCR Program collects data on only prosecutable hate crimes, which make up a fraction of hate incidents (which includes non-prosecutable offenses, such as circulation of white nationalist recruitment materials on college campuses). The Southern Poverty Law Center uses media accounts and people’s self-reports to assess the situation. The Education Attainment is from U.S. Census Bureau. 
+
+The Southern Poverty Law Center uses media accounts and people’s self-reports to assess the situation.
+
+We want to define what is high unemployed rate housegold income and education level, so we use median as a dividing line.
+
+If the share_unemployed_seasonal is higher than median, then the reply under high_unemployed is true, else is false.
+
+If the median_household_income is higher than median, then the reply under high_housegoldincome is true, else is false.
+
+If the PercentBachelorsOrHigher is higher than median, then the reply under high_education is true, else is false.
+
+Here is the summary of the data:
+
+```{r include=FALSE}
+# load data
+hate_urlforplot<- "https://raw.githubusercontent.com/fivethirtyeight/data/master/hate-crimes/hate_crimes.csv"
+hate_urlforplot <-read.csv(hate_urlforplot)
+hate_url<- "https://raw.githubusercontent.com/fivethirtyeight/data/master/hate-crimes/hate_crimes.csv"
+hate_url <-read.csv(hate_url)
+hate_url_benson<- "https://raw.githubusercontent.com/fivethirtyeight/data/master/hate-crimes/hate_crimes.csv"
+hate_url_ds <-read.csv(hate_url_benson)
+Education_rate<- "https://raw.githubusercontent.com/Benson90/607-final-project/main/csvData-2.csv"
+Education_rate_ds <-read.csv(Education_rate)
+# step1 pull the useful column
+hate_url <- hate_url %>%
+select("state","median_household_income","share_unemployed_seasonal","hate_crimes_per_100k_splc","avg_hatecrimes_per_100k_fbi")
+# step2 exclude the NA
+hate_url <- hate_url[complete.cases(hate_url),]
+# step3 added a new column to combine both case from FBI, Southern Poverty Law Center number and education level
+hate_url$hate_crimes_combine <- hate_url$hate_crimes_per_100k_splc+hate_url$avg_hatecrimes_per_100k_fbi 
+hate_education_ds <- hate_url_ds %>%
+  select("state","hate_crimes_per_100k_splc","avg_hatecrimes_per_100k_fbi")
+hate_education_ds$avg_hatecrimes_per_100k_fbi <- hate_education_ds$avg_hatecrimes_per_100k_fbi / 100000
+hate_education_ds$hate_crimes_per_100k_splc <- hate_education_ds$hate_crimes_per_100k_splc / 100000
+Education_rate_ds$PercentHighSchoolOrHigher <- Education_rate_ds$PercentHighSchoolOrHigher / 100
+Education_rate_ds$PercentBachelorsOrHigher <- Education_rate_ds$PercentBachelorsOrHigher / 100
+joined_tibble <- left_join(hate_education_ds, Education_rate_ds, 
+              by = c("state" = "State"))
+# step4 get the Median which is 0.05200
+summary(hate_url) 
+summary(hate_education_ds)
+summary(Education_rate_ds)
+summary(joined_tibble)
+# step5 define high and low unemployed rate by Median
+hate_url$high_unemployed <-hate_url$share_unemployed_seasonal %g% 0.05200 
+hate_url$high_housegoldincome<-hate_url$median_household_income %g% 54310 
+# step6 share_unemployed_seasonal*100k to get unemployed count per 100k people
+hate_url$share_unemployed_seasonal_100k <- hate_url$share_unemployed_seasonal*100000
+```
+```{r echo=FALSE}
+summary(hate_url) 
+```
+
+### Data analysis
+
+First of all, lets check the the unemployement level, hate crime level, and high education status in each states. Then go thru the data distribution , summary of unemployed rate, household income, and education level.
+
+```{r}
+#mapping 
+plot_usmap(data = joined_tibble, values = "hate_crimes_per_100k_splc", color = "red") + 
+  scale_fill_continuous(
+    low = "white", high = "red", name = "Hate Crimes SPLC source", label = scales::comma
+  ) + theme(legend.position = "right")
+plot_usmap(data = joined_tibble, values = "avg_hatecrimes_per_100k_fbi", color = "red") + 
+  scale_fill_continuous(
+    low = "white", high = "red", name = "Hate Crimes fbi source", label = scales::comma
+  ) + theme(legend.position = "right")
+plot_usmap(data = hate_urlforplot, values = "median_household_income", color = "purple") + 
+  scale_fill_continuous(
+    low = "white", high = "purple", name = "Household income arcoss US", label = scales::comma
+  ) + theme(legend.position = "right")
+plot_usmap(data = hate_urlforplot, values = "share_unemployed_seasonal", color = "brown") + 
+  scale_fill_continuous(
+    low = "white", high = "brown", name = "unemployment arcoss US", label = scales::comma
+  ) + theme(legend.position = "right")
+plot_usmap(data = joined_tibble, values = "PercentBachelorsOrHigher", color = "blue") + 
+  scale_fill_continuous(
+    low = "white", high = "blue", name = "Bachelors Or Higher", label = scales::comma
+  ) + theme(legend.position = "right")
+plot_usmap(data = joined_tibble, values = "PercentHighSchoolOrHigher", color = "blue") + 
+  scale_fill_continuous(
+    low = "white", high = "blue", name = "HighSchool Or Higher", label = scales::comma
+  ) + theme(legend.position = "right")
+```
+
+Now lets look at the density of hate crime, umployment rate and household income. 
+
+lets check the data density and summary of unemployed rate. The unemployment data appear a little left skewed for me.
+
+```{r echo=FALSE}
+ggplot(hate_url, aes(share_unemployed_seasonal_100k)) +        
+  geom_histogram(aes(y = ..density..),bins=20) +
+  stat_function(fun = dnorm,
+                args = list(mean = mean(hate_url$share_unemployed_seasonal_100k),
+                            sd = sd(hate_url$share_unemployed_seasonal_100k)),
+                col = "#1b98e0",
+                size = 1)
+summary(hate_url$share_unemployed_seasonal_100k)
+```
+Now lets check the data distribution and summary of hate crimes case. Hate crimes data is different from previous result, the data appear right skewed for me, and clearly we can see one outliers from the Now lets check the data distribution and summary of crimes case. It is different from previous result, the data appear right skewed for me, and clearly we can see one outliers from the plot.
+
+
+```{r echo=FALSE}
+ggplot(hate_url, aes(hate_crimes_combine)) +        
+  geom_histogram(aes(y = ..density..),bins=20) +
+  stat_function(fun = dnorm,
+                args = list(mean = mean(hate_url$hate_crimes_combine),
+                            sd = sd(hate_url$hate_crimes_combine)),
+                col = "#1b98e0",
+                size = 1) 
+summary(hate_url$hate_crimes_combine)
+```
+
+Because we see the outliers, we would like to clear it. 
+
+Now we can see the mean drop from 2.6460 to 2.4323, and max drop from 12.4758 to 5.4327 .
+
+
+```{r echo=FALSE}
+Q1 <- quantile(hate_url$hate_crimes_combine, .25)
+Q3 <- quantile(hate_url$hate_crimes_combine, .75)
+IQR <- IQR(hate_url$hate_crimes_combine)
+new_hate_url <- subset(hate_url, hate_url$hate_crimes_combine> (Q1 - 1.5*IQR) & hate_url$hate_crimes_combine< (Q3 + 1.5*IQR))
+ggplot(new_hate_url, aes(hate_crimes_combine)) +        
+  geom_histogram(aes(y = ..density..),bins=20) +
+  stat_function(fun = dnorm,
+                args = list(mean = mean(new_hate_url$hate_crimes_combine),
+                            sd = sd(new_hate_url$hate_crimes_combine)),
+                col = "#1b98e0",
+                size = 1) 
+summary(new_hate_url$hate_crimes_combine)
+```
+
+For household income, we have similar left skewed results, however, there is no outliner this time.
+
+```{r}
+ggplot(hate_url, aes(median_household_income)) +        
+  geom_histogram(aes(y = ..density..),bins=20) +
+  stat_function(fun = dnorm,
+                args = list(mean = mean(hate_url$median_household_income),
+                            sd = sd(hate_url$median_household_income)),
+                col = "#1b98e0",
+                size = 1) 
+summary(hate_url$median_household_income)
+```
+
+
+After removing the outliner of hate crimes, let's compare the result of both group of higher than avg unemployed rate and lower than avg unemployed rate. There is more states has lower unemployed rate.
+
+However, the states has lower unemployed rate tend to have a higher hate crime cases.Higer household income has a higher hate crimes as well. It is a shocking result. 
+
+```{r}
+boxplot(new_hate_url$hate_crimes_combine ~ new_hate_url$high_unemployed, main = "Boxplot with hate crimes case of high unemployed rate", ylab = "hate crimes case", xlab = "high unemployed rate",col="blue")
+```
+
+```{r}
+boxplot(new_hate_url$hate_crimes_combine ~ new_hate_url$high_housegoldincome, main = "Boxplot with hate crimes case of high household income", ylab = "hate crimes case", xlab = "high unemployed rate",col="blue")
+```
+```{r include=FALSE}
+#education level and hate crime
+summary(joined_tibble)
+#find average high eduation level states
+joined_tibble$high_education <-joined_tibble$PercentBachelorsOrHigher %g% 0.3128 
+ggplot(joined_tibble, aes(x = high_education)) +
+  geom_bar(fill="blue") +
+  labs(
+    x = "", y = "",
+    title = "does the state have higher than avg high education rate?"
+  ) +
+  coord_flip() 
+```
+
+If unployment and lower income does not drive hate crimes, how about education?
+
+Also, the states has High education level tend to have a higher hate crime cases !!!???
+
+```{r}
+boxplot(joined_tibble$avg_hatecrimes_per_100k_fbi ~ joined_tibble$high_education, main = "Boxplot with hate crimes case of high education rate", ylab = "hate crimes case", xlab = "high education rate",col="blue")
+```
+
+We started thinking if these 3 models are statistically significant.
+
+```{r}
+hate_model <- lm(new_hate_url$hate_crimes_combine ~ new_hate_url$share_unemployed_seasonal_100k )
+summary(hate_model)
+hate_model2 <- lm(new_hate_url$hate_crimes_combine ~ new_hate_url$median_household_income )
+summary(hate_model2)
+```
+
+
+The p-value is 0.6229 which mean the unemployment model is not statistically significant
+
+also, one more thing bring my attention which is R-squared is 0.005542 which is low.
+
+The p-value of household income model is 0.07614 which is still show that the model is not statistically significant.
+
+R-squared is is low for household income model too, it is 0.06975. However, base on the p-value and R-squared, household income model has a stronger relationship than employment although it is not good to use. 
+
+
+```{r echo=FALSE}
+ggplot(data = new_hate_url, aes(x = share_unemployed_seasonal_100k, y = hate_crimes_combine)) +
+  geom_point(colour = "blue", size = 1) +
+  stat_smooth(method = "lm", se = FALSE, color= "red")
+
+ggplot(data = new_hate_url, aes(x = median_household_income, y = hate_crimes_combine)) +
+  geom_point(colour = "blue", size = 1) +
+  stat_smooth(method = "lm", se = FALSE, color= "red")
+
+```
+
+
+Also, the distribution is heavy tailed since there is few extreme prositve and negative residuals for both model.
+
+
+```{r}
+ggplot(data = hate_model, aes(sample = .resid)) +
+  stat_qq(colour = "blue", size = 1) + stat_qq_line(colour = "red", size = 1)
+ggplot(data = hate_model2, aes(sample = .resid)) +
+  stat_qq(colour = "blue", size = 1) + stat_qq_line(colour = "red", size = 1)
+```
+
+Which mean both unemployment and household model was not good. 
+
+How about education level model?
+
+
+```{r  echo=FALSE}
+m1 <- lm(PercentHighSchoolOrHigher ~ avg_hatecrimes_per_100k_fbi, data = joined_tibble)
+summary(m1)
+m2 <- lm(PercentBachelorsOrHigher ~ avg_hatecrimes_per_100k_fbi, data = joined_tibble)
+summary(m2)
+m3 <- lm(PercentHighSchoolOrHigher ~ hate_crimes_per_100k_splc, data = joined_tibble)
+summary(m3)
+m4 <- lm(PercentBachelorsOrHigher ~ hate_crimes_per_100k_splc, data = joined_tibble)
+summary(m4)
+```
+Based on the regression line from the plot, the highest education level had the highest hate crime rate.  
+Also, the P-value is low, 0.004889, and it replicates. However, the data show a low Multiple R-squared:  0.1664, which means the education level has not much related to the crime rate. 
+
+
+```{r}
+ggplot(data = joined_tibble, aes(x = avg_hatecrimes_per_100k_fbi, y = PercentHighSchoolOrHigher)) +
+  geom_jitter() + 
+  geom_smooth(method = "lm")
+hist(m1$residuals)
+qqnorm(m1$residuals)
+qqline(m1$residuals)
+ggplot(data = joined_tibble, aes(x = avg_hatecrimes_per_100k_fbi, y = PercentBachelorsOrHigher)) +
+  geom_jitter() + 
+  geom_smooth(method = "lm")
+hist(m2$residuals)
+qqnorm(m2$residuals)
+qqline(m2$residuals)
+ggplot(data = joined_tibble, aes(x = hate_crimes_per_100k_splc, y = PercentHighSchoolOrHigher)) +
+  geom_jitter() + 
+  geom_smooth(method = "lm")
+hist(m3$residuals)
+qqnorm(m3$residuals)
+qqline(m3$residuals)
+ggplot(data = joined_tibble, aes(x = hate_crimes_per_100k_splc, y = PercentBachelorsOrHigher)) +
+  geom_jitter() + 
+  geom_smooth(method = "lm")
+hist(m4$residuals)
+qqnorm(m4$residuals)
+qqline(m4$residuals)
+```
+
+### Conclusion
+
+Unlike our prediction that higher rates of hate crimes are tied to household income, unemployment rate and education level. Our analysis show that is not a strong relationship between unemployment rate, household income, education level and hate crimes case from all the plot and summary. 
+
+Although education and household income has a stronger relation than unemployment. However, there is still too much variability in the model and High p value shows that the model is not statistically significant. 
+
+Maybe hate crimes has higher chance that it is cause by what you see or read from media instead of the income/employment and education. it is just like article Hate Speech on Twitter Predicts Frequency of Real-life Hate Crimes point out. 
+
+
+https://www.nyu.edu/about/news-publications/news/2019/june/hate-speech-on-twitter-predicts-frequency-of-real-life-hate-crim.html
+https://fivethirtyeight.com/features/higher-rates-of-hate-crimes-are-tied-to-income-inequality/
+https://www.census.gov/data/tables/2018/demo/education-attainment/cps-detailed-tables.html
+
+
+
